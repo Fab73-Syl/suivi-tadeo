@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi Élite Tadéo</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000000; color: #ffffff; padding: 15px; margin: 0; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #222; }
+        .header h2 { margin: 0; color: #00ffb3; font-size: 22px; }
+        .header p { margin: 5px 0 0 0; color: #888; font-size: 13px; letter-spacing: 1px; }
+        .target-banner { background: #111; border: 1px dashed #333; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 13px; color: #00ffb3; text-align: center; }
+        .block { background: #121212; border: 1px solid #222; padding: 18px; border-radius: 12px; margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 12px; font-size: 14px; color: #fff; }
+        .sub-label { font-size: 11px; color: #666; font-weight: normal; margin-top: -8px; margin-bottom: 12px; display: block; }
+        select, input[type="number"] { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; box-sizing: border-box; }
+        .grid-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .btn-check { display: none; }
+        .btn-label { background: #1c1c1e; padding: 14px 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; border: 1px solid #222; transition: 0.2s; display: block; }
+        .btn-check:checked + .btn-label { border-color: #00ffb3; background: #0a2419; color: #00ffb3; font-weight: bold; }
+        .submit-btn { width: 100%; background: #00ffb3; color: #000; font-weight: bold; padding: 16px; border: none; border-radius: 10px; font-size: 16px; margin-top: 20px; cursor: pointer; letter-spacing: 0.5px; }
+        .submit-btn:active { background: #00b37e; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>🇸🇪 OBJECTIF J20 ÉLITE</h2>
+        <p>SUIVI DE PERFORMANCE TRACEABILITY</p>
+    </div>
+
+    <div class="target-banner">
+        🎯 Cibles Mars 2027 : 82 kg (Muscle Sec) | 🏋️‍♂️ Squat : 130 kg
+    </div>
+
+    <!-- METTRE VOTRE LIEN FORMSPREE ICI -->
+    <form action="https://formspree.io/f/mqerovzk" method="POST">
+        
+        <!-- 1. TYPE DE SÉANCE -->
+        <div class="block">
+            <label>1. Type de Séance principale</label>
+            <div class="grid-buttons">
+                <input type="radio" name="1_Type_Seance" id="g1" value="Glace (Skills)" class="btn-check" checked><label for="g1" class="btn-label">🏒 Glace (Skills)</label>
+                <option value="3" selected>⚡ 3 - Difficile (Standard Match/Muscu)</option>
+                <option value="4">⚡ 4 - Très Difficile (Haute Intensité)</option>
+                <option value="5">⚡ 5 - Épuisement (Maximal)</option>
+            </select>
+        </div>
+
+        <!-- 4. SQUAT MAX -->
+        <div class="block">
+            <label for="squat">4. Charge max au Squat (1RM)</label>
+            <span class="sub-label">À remplir lors des tests | Target : 130 kg</span>
+            <input type="number" id="squat" name="4_Squat_Max_KG" placeholder="En kg (Optionnel, laisser vide si pas testé)" pattern="[0-9]*">
+        </div>
+
+        <!-- 5. PROTÉINES -->
+        <div class="block">
+            <label for="prot">5. Protéines consommées</label>
+            <span class="sub-label">Target stricte : 160g à 165g / jour</span>
+            <input type="number" id="prot" name="5_Proteines_Grammes" placeholder="En grammes (ex: 160)" required pattern="[0-9]*">
+        </div>
+
+        <!-- 6. HYDRATATION -->
+        <div class="block">
+            <label for="eau">6. Hydratation du jour</label>
+            <span class="sub-label">Target : 3,5 à 4 Litres</span>
+            <select id="eau" name="6_Hydratation_Litres">
+                <option value="2">💧 2,0 Litres (Insuffisant)</option>
+                <option value="3">💧 3,0 Litres</option>
+                <option value="3.5" selected>💧 3,5 Litres (Zone cible)</option>
+                <option value="4">💧 4,0 Litres (Zone cible 🔥)</option>
+                <option value="4.5">💧 4,5 Litres +</option>
+            </select>
+        </div>
+
+        <!-- 7. POIDS CORPOREL -->
+        <div class="block">
+            <label for="poids">7. Poids corporel actuel</label>
+            <span class="sub-label">À remplir de préférence le lundi matin | Target : 82 kg</span>
+            <input type="number" step="0.1" id="poids" name="7_Poids_Actuel_KG" placeholder="En kg (ex: 77.2)" pattern="[0-9]*">
+        </div>
+
+        <!-- 8. ÉTAT DE FORME -->
+        <div class="block">
+            <label>8. État de Forme / Énergie générale</label>
+            <div class="grid-buttons">
+                <input type="radio" name="8_Etat_Forme" id="f1" value="Top Forme" class="btn-check" checked><label for="f1" class="btn-label">🔋 Top Forme (100%)</label>
+                <input type="radio" name="8_Etat_Forme" id="f2" value="Energie OK" class="btn-check"><label for="f2" class="btn-label">⚡ Énergie OK</label>
+                <input type="radio" name="8_Etat_Forme" id="f3" value="Fatigue / Courbatures" class="btn-check"><label for="f3" class="btn-label">💤 Courbatures</label>
+                <input type="radio" name="8_Etat_Forme" id="f4" value="Douleur" class="btn-check"><label for="f4" class="btn-label">⚠️ Douleur (Alerte)</label>
+            </div>
+        </div>
+
+        <!-- BOUTON ENVOI -->
+        <button type="submit" class="submit-btn">TRANSMETTRE LES DONNÉES 🚀</button>
+    </form>
+
+</body>
+</html>
