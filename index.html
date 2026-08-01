@@ -1,8 +1,11 @@
+### index.html modifié
+
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Suivi Élite Tadéo</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000000; color: #ffffff; padding: 15px; margin: 0; }
@@ -15,9 +18,22 @@
         .sub-label { font-size: 11px; color: #666; font-weight: normal; margin-top: -8px; margin-bottom: 12px; display: block; }
         select, input[type="number"] { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; box-sizing: border-box; }
         .grid-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .btn-check { display: none; }
-        .btn-label { background: #1c1c1e; padding: 14px 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; border: 1px solid #222; transition: 0.2s; display: block; }
+        /* Accessible hiding for inputs: keeps them interactive for labels on iOS */
+        .btn-check {
+          position: absolute;
+          opacity: 0;
+          width: 1px;
+          height: 1px;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          clip: rect(0 0 0 0);
+          white-space: nowrap;
+          border: 0;
+        }
+        .btn-label { background: #1c1c1e; padding: 14px 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; border: 1px solid #222; transition: 0.2s; display: block; user-select: none; }
         .btn-check:checked + .btn-label { border-color: #00ffb3; background: #0a2419; color: #00ffb3; font-weight: bold; }
+        .btn-check:focus + .btn-label { outline: 2px solid #00ffb3; outline-offset: 3px; }
         .submit-btn { width: 100%; background: #00ffb3; color: #000; font-weight: bold; padding: 16px; border: none; border-radius: 10px; font-size: 16px; margin-top: 20px; cursor: pointer; letter-spacing: 0.5px; }
         .submit-btn:active { background: #00b37e; }
     </style>
@@ -33,14 +49,52 @@
         🎯 Cibles Mars 2027 : 82 kg (Muscle Sec) | 🏋️‍♂️ Squat : 130 kg
     </div>
 
-    <!-- METTRE VOTRE LIEN FORMSPREE ICI -->
-    <form action="https://formspree.io/f/mqerovzk" method="POST">
-        
+    <!-- Remplacez TON_CODE_FORMSPREE par votre identifiant Formspree -->
+    <form action="https://formspree.io/f/TON_CODE_FORMSPREE" method="POST" autocomplete="on">
+
         <!-- 1. TYPE DE SÉANCE -->
         <div class="block">
             <label>1. Type de Séance principale</label>
-            <div class="grid-buttons">
-                <input type="radio" name="1_Type_Seance" id="g1" value="Glace (Skills)" class="btn-check" checked><label for="g1" class="btn-label">🏒 Glace (Skills)</label>
+            <div class="grid-buttons" role="radiogroup" aria-label="Type de séance">
+                <input type="radio" name="1_Type_Seance" id="g1" value="Glace (Skills)" class="btn-check" />
+                <label for="g1" class="btn-label" tabindex="0">🏒 Glace (Skills)</label>
+
+                <input type="radio" name="1_Type_Seance" id="g2" value="Glace (Équipe)" class="btn-check" />
+                <label for="g2" class="btn-label" tabindex="0">🏒 Glace (Match)</label>
+
+                <input type="radio" name="1_Type_Seance" id="m1" value="Maniement (WinnWell)" class="btn-check" />
+                <label for="m1" class="btn-label" tabindex="0">🪵 Maniement</label>
+
+                <input type="radio" name="1_Type_Seance" id="mu1" value="Muscu (Bas)" class="btn-check" />
+                <label for="mu1" class="btn-label" tabindex="0">🏋️‍♂️ Muscu (Bas)</label>
+
+                <input type="radio" name="1_Type_Seance" id="mu2" value="Muscu (Haut)" class="btn-check" />
+                <label for="mu2" class="btn-label" tabindex="0">🏋️‍♂️ Muscu (Haut)</label>
+
+                <input type="radio" name="1_Type_Seance" id="c1" value="Cardio / Sprints" class="btn-check" />
+                <label for="c1" class="btn-label" tabindex="0">🏃‍♂️ Cardio / Sprints</label>
+
+                <input type="radio" name="1_Type_Seance" id="a1" value="Agilite (Echelle)" class="btn-check" />
+                <label for="a1" class="btn-label" tabindex="0">🪜 Agilité (Échelle)</label>
+
+                <input type="radio" name="1_Type_Seance" id="r1" value="Repos / Mobilite" class="btn-check" />
+                <label for="r1" class="btn-label" tabindex="0">💤 Repos / Mobilité</label>
+            </div>
+        </div>
+
+        <!-- 2. DURÉE -->
+        <div class="block">
+            <label for="duree">2. Durée totale de l'effort</label>
+            <span class="sub-label">Objectif hebdo : 450 à 600 min</span>
+            <input type="number" id="duree" name="2_Duree_Minutes" placeholder="En minutes (ex: 45, 60, 90)" required inputmode="numeric" />
+        </div>
+
+        <!-- 3. INTENSITÉ RPE -->
+        <div class="block">
+            <label for="rpe">3. Intensité de la séance (RPE)</label>
+            <select id="rpe" name="3_Intensite_RPE" required>
+                <option value="1">⚡ 1 - Très Facile (Récupération)</option>
+                <option value="2">⚡ 2 - Modéré (Travail technique)</option>
                 <option value="3" selected>⚡ 3 - Difficile (Standard Match/Muscu)</option>
                 <option value="4">⚡ 4 - Très Difficile (Haute Intensité)</option>
                 <option value="5">⚡ 5 - Épuisement (Maximal)</option>
@@ -51,21 +105,21 @@
         <div class="block">
             <label for="squat">4. Charge max au Squat (1RM)</label>
             <span class="sub-label">À remplir lors des tests | Target : 130 kg</span>
-            <input type="number" id="squat" name="4_Squat_Max_KG" placeholder="En kg (Optionnel, laisser vide si pas testé)" pattern="[0-9]*">
+            <input type="number" id="squat" name="4_Squat_Max_KG" placeholder="En kg (Optionnel, laisser vide si pas testé)" inputmode="numeric" />
         </div>
 
         <!-- 5. PROTÉINES -->
         <div class="block">
             <label for="prot">5. Protéines consommées</label>
             <span class="sub-label">Target stricte : 160g à 165g / jour</span>
-            <input type="number" id="prot" name="5_Proteines_Grammes" placeholder="En grammes (ex: 160)" required pattern="[0-9]*">
+            <input type="number" id="prot" name="5_Proteines_Grammes" placeholder="En grammes (ex: 160)" required inputmode="numeric" />
         </div>
 
         <!-- 6. HYDRATATION -->
         <div class="block">
             <label for="eau">6. Hydratation du jour</label>
             <span class="sub-label">Target : 3,5 à 4 Litres</span>
-            <select id="eau" name="6_Hydratation_Litres">
+            <select id="eau" name="6_Hydratation_Litres" required>
                 <option value="2">💧 2,0 Litres (Insuffisant)</option>
                 <option value="3">💧 3,0 Litres</option>
                 <option value="3.5" selected>💧 3,5 Litres (Zone cible)</option>
@@ -78,17 +132,24 @@
         <div class="block">
             <label for="poids">7. Poids corporel actuel</label>
             <span class="sub-label">À remplir de préférence le lundi matin | Target : 82 kg</span>
-            <input type="number" step="0.1" id="poids" name="7_Poids_Actuel_KG" placeholder="En kg (ex: 77.2)" pattern="[0-9]*">
+            <input type="number" step="0.1" id="poids" name="7_Poids_Actuel_KG" placeholder="En kg (ex: 77.2)" inputmode="decimal" />
         </div>
 
         <!-- 8. ÉTAT DE FORME -->
         <div class="block">
             <label>8. État de Forme / Énergie générale</label>
-            <div class="grid-buttons">
-                <input type="radio" name="8_Etat_Forme" id="f1" value="Top Forme" class="btn-check" checked><label for="f1" class="btn-label">🔋 Top Forme (100%)</label>
-                <input type="radio" name="8_Etat_Forme" id="f2" value="Energie OK" class="btn-check"><label for="f2" class="btn-label">⚡ Énergie OK</label>
-                <input type="radio" name="8_Etat_Forme" id="f3" value="Fatigue / Courbatures" class="btn-check"><label for="f3" class="btn-label">💤 Courbatures</label>
-                <input type="radio" name="8_Etat_Forme" id="f4" value="Douleur" class="btn-check"><label for="f4" class="btn-label">⚠️ Douleur (Alerte)</label>
+            <div class="grid-buttons" role="radiogroup" aria-label="État de forme">
+                <input type="radio" name="8_Etat_Forme" id="f1" value="Top Forme" class="btn-check" />
+                <label for="f1" class="btn-label" tabindex="0">🔋 Top Forme (100%)</label>
+
+                <input type="radio" name="8_Etat_Forme" id="f2" value="Energie OK" class="btn-check" />
+                <label for="f2" class="btn-label" tabindex="0">⚡ Énergie OK</label>
+
+                <input type="radio" name="8_Etat_Forme" id="f3" value="Fatigue / Courbatures" class="btn-check" />
+                <label for="f3" class="btn-label" tabindex="0">💤 Courbatures</label>
+
+                <input type="radio" name="8_Etat_Forme" id="f4" value="Douleur" class="btn-check" />
+                <label for="f4" class="btn-label" tabindex="0">⚠️ Douleur (Alerte)</label>
             </div>
         </div>
 
@@ -96,5 +157,27 @@
         <button type="submit" class="submit-btn">TRANSMETTRE LES DONNÉES 🚀</button>
     </form>
 
+    <script>
+      // Petit script pour améliorer l'accessibilité tactile : permet d'activer la radio en appuyant sur le label via clavier/touch
+      document.querySelectorAll('.btn-label').forEach(function(lbl){
+        lbl.addEventListener('keydown', function(e){
+          if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault();
+            var id = this.getAttribute('for');
+            var input = document.getElementById(id);
+            if(input) input.checked = true;
+            input && input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+        lbl.addEventListener('click', function(){
+          var id = this.getAttribute('for');
+          var input = document.getElementById(id);
+          if(input) input.checked = true;
+          input && input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+    </script>
+
 </body>
 </html>
+```
