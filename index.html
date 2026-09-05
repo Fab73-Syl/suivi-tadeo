@@ -1,6 +1,3 @@
-### index.html modifié
-
-```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -16,9 +13,8 @@
         .block { background: #121212; border: 1px solid #222; padding: 18px; border-radius: 12px; margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 12px; font-size: 14px; color: #fff; }
         .sub-label { font-size: 11px; color: #666; font-weight: normal; margin-top: -8px; margin-bottom: 12px; display: block; }
-        select, input[type="number"] { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; box-sizing: border-box; }
+        select, input[type="number"], input[type="text"], input[type="time"] { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; box-sizing: border-box; }
         .grid-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        /* Accessible hiding for inputs: keeps them interactive for labels on iOS */
         .btn-check {
           position: absolute;
           opacity: 0;
@@ -36,6 +32,13 @@
         .btn-check:focus + .btn-label { outline: 2px solid #00ffb3; outline-offset: 3px; }
         .submit-btn { width: 100%; background: #00ffb3; color: #000; font-weight: bold; padding: 16px; border: none; border-radius: 10px; font-size: 16px; margin-top: 20px; cursor: pointer; letter-spacing: 0.5px; }
         .submit-btn:active { background: #00b37e; }
+        .submit-btn:disabled { opacity: 0.6; cursor: default; }
+        .hydration-row { display: grid; grid-template-columns: 1fr 120px; gap: 10px; align-items: center; }
+        .hidden { display: none; }
+        .status-msg { text-align: center; margin-top: 12px; font-size: 13px; }
+        .status-msg.ok { color: #00ffb3; }
+        .status-msg.err { color: #ff5c5c; }
+        @media (max-width:480px){ .hydration-row { grid-template-columns: 1fr; } .grid-buttons { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -49,10 +52,9 @@
         🎯 Cibles Mars 2027 : 82 kg (Muscle Sec) | 🏋️‍♂️ Squat : 130 kg
     </div>
 
-    <!-- Remplacez TON_CODE_FORMSPREE par votre identifiant Formspree -->
-    <form action="https://formspree.io/f/xrenwlrl" method="POST" autocomplete="on">
+    <!-- Remplace COLLE_TON_URL_ICI par l'URL de ton application web Apps Script -->
+    <form id="suiviForm" autocomplete="on" data-endpoint=https://script.google.com/macros/s/AKfycbzVEfQ08oCjxKukWFj5cK3QXTjnEnHovwwnXfvWAX3c_bYlObWd7W0-iD9KfweIO1UlPw/exec>
 
-        <!-- 1. TYPE DE SÉANCE -->
         <div class="block">
             <label>1. Type de Séance principale</label>
             <div class="grid-buttons" role="radiogroup" aria-label="Type de séance">
@@ -80,16 +82,20 @@
                 <input type="radio" name="1_Type_Seance" id="r1" value="Repos / Mobilite" class="btn-check" />
                 <label for="r1" class="btn-label" tabindex="0">💤 Repos / Mobilité</label>
             </div>
+
+            <div id="agilityExtra" class="hidden" style="margin-top:12px;">
+                <label for="agilityTime">Temps au parcours d'agilité</label>
+                <span class="sub-label">Indiquez le temps en secondes (ex: 12.4) ou au format mm:ss</span>
+                <input id="agilityTime" name="9_Temps_Parcours_Agilite" type="text" placeholder="Ex: 12.4 ou 00:12.40" inputmode="numeric" />
+            </div>
         </div>
 
-        <!-- 2. DURÉE -->
         <div class="block">
             <label for="duree">2. Durée totale de l'effort</label>
             <span class="sub-label">Objectif hebdo : 450 à 600 min</span>
             <input type="number" id="duree" name="2_Duree_Minutes" placeholder="En minutes (ex: 45, 60, 90)" required inputmode="numeric" />
         </div>
 
-        <!-- 3. INTENSITÉ RPE -->
         <div class="block">
             <label for="rpe">3. Intensité de la séance (RPE)</label>
             <select id="rpe" name="3_Intensite_RPE" required>
@@ -101,41 +107,36 @@
             </select>
         </div>
 
-        <!-- 4. SQUAT MAX -->
         <div class="block">
             <label for="squat">4. Charge max au Squat (1RM)</label>
             <span class="sub-label">À remplir lors des tests | Target : 130 kg</span>
             <input type="number" id="squat" name="4_Squat_Max_KG" placeholder="En kg (Optionnel, laisser vide si pas testé)" inputmode="numeric" />
         </div>
 
-        <!-- 5. PROTÉINES -->
         <div class="block">
             <label for="prot">5. Protéines consommées</label>
             <span class="sub-label">Target stricte : 160g à 165g / jour</span>
             <input type="number" id="prot" name="5_Proteines_Grammes" placeholder="En grammes (ex: 160)" required inputmode="numeric" />
         </div>
 
-        <!-- 6. HYDRATATION -->
         <div class="block">
             <label for="eau">6. Hydratation du jour</label>
             <span class="sub-label">Target : 3,5 à 4 Litres</span>
-            <select id="eau" name="6_Hydratation_Litres" required>
-                <option value="2">💧 2,0 Litres (Insuffisant)</option>
-                <option value="3">💧 3,0 Litres</option>
-                <option value="3.5" selected>💧 3,5 Litres (Zone cible)</option>
-                <option value="4">💧 4,0 Litres (Zone cible 🔥)</option>
-                <option value="4.5">💧 4,5 Litres +</option>
-            </select>
+
+            <div class="hydration-row">
+              <select id="eau" name="6_Hydratation_Litres" aria-label="Hydratation du jour en litres">
+              </select>
+
+              <input id="eauNumber" type="number" step="0.1" min="0" max="10" value="3.5" aria-label="Saisie hydratation en litres" />
+            </div>
         </div>
 
-        <!-- 7. POIDS CORPOREL -->
         <div class="block">
             <label for="poids">7. Poids corporel actuel</label>
             <span class="sub-label">À remplir de préférence le lundi matin | Target : 82 kg</span>
             <input type="number" step="0.1" id="poids" name="7_Poids_Actuel_KG" placeholder="En kg (ex: 77.2)" inputmode="decimal" />
         </div>
 
-        <!-- 8. ÉTAT DE FORME -->
         <div class="block">
             <label>8. État de Forme / Énergie générale</label>
             <div class="grid-buttons" role="radiogroup" aria-label="État de forme">
@@ -153,12 +154,11 @@
             </div>
         </div>
 
-        <!-- BOUTON ENVOI -->
-        <button type="submit" class="submit-btn">TRANSMETTRE LES DONNÉES 🚀</button>
+        <button type="submit" class="submit-btn" id="submitBtn">TRANSMETTRE LES DONNÉES 🚀</button>
+        <div id="statusMsg" class="status-msg"></div>
     </form>
 
     <script>
-      // Petit script pour améliorer l'accessibilité tactile : permet d'activer la radio en appuyant sur le label via clavier/touch
       document.querySelectorAll('.btn-label').forEach(function(lbl){
         lbl.addEventListener('keydown', function(e){
           if(e.key === 'Enter' || e.key === ' '){
@@ -176,8 +176,143 @@
           input && input.dispatchEvent(new Event('change', { bubbles: true }));
         });
       });
+
+      (function initHydrationControl(){
+        const select = document.getElementById('eau');
+        const number = document.getElementById('eauNumber');
+        const min = 0.0;
+        const max = 5.0;
+        const step = 0.5;
+
+        const zoneCible = {
+          '3.5': '💧 3,5 L (Zone cible)',
+          '4.0': '💧 4,0 L (Zone cible 🔥)'
+        };
+
+        for (let v = min; v <= max + 1e-9; v = Math.round((v + step) * 100) / 100) {
+          const valStr = v.toFixed(1);
+          const opt = document.createElement('option');
+          opt.value = valStr;
+          if (zoneCible[valStr]) {
+            opt.textContent = zoneCible[valStr];
+          } else {
+            opt.textContent = '💧 ' + valStr.replace('.', ',') + ' L';
+          }
+          select.appendChild(opt);
+        }
+
+        select.value = '3.5';
+        number.value = '3.5';
+
+        select.addEventListener('change', () => {
+          if (select.value !== '') number.value = parseFloat(select.value).toFixed(1);
+        });
+
+        number.addEventListener('input', () => {
+          let val = parseFloat(number.value);
+          if (isNaN(val) || val < 0) val = 0;
+          val = Math.round(val * 10) / 10;
+          number.value = val.toFixed(1);
+
+          const match = Array.from(select.options).some(opt => opt.value === val.toFixed(1));
+          if (match) {
+            select.value = val.toFixed(1);
+          } else {
+            select.value = '';
+          }
+        });
+      })();
+
+      (function initAgilityExtra(){
+        const agilityRadio = document.getElementById('a1');
+        const allRadios = document.querySelectorAll('input[name="1_Type_Seance"]');
+        const extra = document.getElementById('agilityExtra');
+        const agilityInput = document.getElementById('agilityTime');
+
+        function updateVisibility() {
+          if (agilityRadio.checked) {
+            extra.classList.remove('hidden');
+            agilityInput.setAttribute('required', 'required');
+          } else {
+            extra.classList.add('hidden');
+            agilityInput.removeAttribute('required');
+            agilityInput.value = '';
+          }
+        }
+
+        updateVisibility();
+        allRadios.forEach(r => r.addEventListener('change', updateVisibility));
+      })();
+
+      // Envoi vers Google Sheets via Apps Script (remplace l'envoi Formspree)
+      document.getElementById('suiviForm').addEventListener('submit', function(e){
+        e.preventDefault();
+
+        const form = e.target;
+        const endpoint = form.getAttribute('data-endpoint');
+        const statusMsg = document.getElementById('statusMsg');
+        const submitBtn = document.getElementById('submitBtn');
+
+        const agilityRadio = document.getElementById('a1');
+        const agilityInput = document.getElementById('agilityTime');
+        if (agilityRadio.checked && (agilityInput.value || '').trim() === '') {
+          alert('Vous avez choisi Agilité — veuillez indiquer le "Temps au parcours d\'agilité".');
+          agilityInput.focus();
+          return;
+        }
+
+        const select = document.getElementById('eau');
+        const number = document.getElementById('eauNumber');
+        const selected = select.value;
+        const manual = number.value;
+        const manualNum = parseFloat(manual);
+
+        if ((selected === '' || selected === null) && (manual === '' || isNaN(manualNum))) {
+          alert('Veuillez indiquer votre hydratation en litres (sélection ou saisie).');
+          return;
+        }
+
+        const formData = new FormData(form);
+        // Assure l'envoi de la valeur d'hydratation, saisie manuelle ou sélectionnée
+        if ((selected === '' || selected === null) && !isNaN(manualNum)) {
+          formData.set('6_Hydratation_Litres_hidden', manualNum.toFixed(1));
+        }
+
+        if (!endpoint || endpoint.indexOf('COLLE_TON_URL_ICI') !== -1) {
+          statusMsg.textContent = "⚠️ URL Google Sheets non configurée dans le formulaire.";
+          statusMsg.className = 'status-msg err';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'ENVOI EN COURS...';
+        statusMsg.textContent = '';
+        statusMsg.className = 'status-msg';
+
+        fetch(endpoint, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: formData
+        })
+        .then(function(){
+          // mode no-cors: on ne peut pas lire la réponse, on considère l'envoi réussi
+          statusMsg.textContent = '✅ Données envoyées avec succès !';
+          statusMsg.className = 'status-msg ok';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'TRANSMETTRE LES DONNÉES 🚀';
+          form.reset();
+          document.getElementById('eau').value = '3.5';
+          document.getElementById('eauNumber').value = '3.5';
+          document.getElementById('agilityExtra').classList.add('hidden');
+        })
+        .catch(function(err){
+          statusMsg.textContent = '❌ Erreur lors de l\'envoi. Réessayez.';
+          statusMsg.className = 'status-msg err';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'TRANSMETTRE LES DONNÉES 🚀';
+        });
+      });
     </script>
 
 </body>
 </html>
-```
