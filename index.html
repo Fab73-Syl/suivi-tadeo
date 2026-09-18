@@ -1,318 +1,630 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Suivi Élite Tadéo</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000000; color: #ffffff; padding: 15px; margin: 0; }
-        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #222; }
-        .header h2 { margin: 0; color: #00ffb3; font-size: 22px; }
-        .header p { margin: 5px 0 0 0; color: #888; font-size: 13px; letter-spacing: 1px; }
-        .target-banner { background: #111; border: 1px dashed #333; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 13px; color: #00ffb3; text-align: center; }
-        .block { background: #121212; border: 1px solid #222; padding: 18px; border-radius: 12px; margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 12px; font-size: 14px; color: #fff; }
-        .sub-label { font-size: 11px; color: #666; font-weight: normal; margin-top: -8px; margin-bottom: 12px; display: block; }
-        select, input[type="number"], input[type="text"], input[type="time"] { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; box-sizing: border-box; }
-        .grid-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .btn-check {
-          position: absolute;
-          opacity: 0;
-          width: 1px;
-          height: 1px;
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-          clip: rect(0 0 0 0);
-          white-space: nowrap;
-          border: 0;
-        }
-        .btn-label { background: #1c1c1e; padding: 14px 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; border: 1px solid #222; transition: 0.2s; display: block; user-select: none; }
-        .btn-check:checked + .btn-label { border-color: #00ffb3; background: #0a2419; color: #00ffb3; font-weight: bold; }
-        .btn-check:focus + .btn-label { outline: 2px solid #00ffb3; outline-offset: 3px; }
-        .submit-btn { width: 100%; background: #00ffb3; color: #000; font-weight: bold; padding: 16px; border: none; border-radius: 10px; font-size: 16px; margin-top: 20px; cursor: pointer; letter-spacing: 0.5px; }
-        .submit-btn:active { background: #00b37e; }
-        .submit-btn:disabled { opacity: 0.6; cursor: default; }
-        .hydration-row { display: grid; grid-template-columns: 1fr 120px; gap: 10px; align-items: center; }
-        .hidden { display: none; }
-        .status-msg { text-align: center; margin-top: 12px; font-size: 13px; }
-        .status-msg.ok { color: #00ffb3; }
-        .status-msg.err { color: #ff5c5c; }
-        @media (max-width:480px){ .hydration-row { grid-template-columns: 1fr; } .grid-buttons { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
+// ============================================================
+// RÉCEPTION DES DONNÉES DU FORMULAIRE
+// ============================================================
+function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Suivi Tadeo1');
+    if (!sheet) {
+      throw new Error('Onglet "Suivi Tadeo1" introuvable. Onglets disponibles : ' +
+        ss.getSheets().map(function(s){ return s.getName(); }).join(', '));
+    }
 
-    <div class="header">
-        <h2>🇸🇪 OBJECTIF J20 ÉLITE</h2>
-        <p>SUIVI DE PERFORMANCE TRACEABILITY</p>
-    </div>
+    var data = e && e.parameter ? e.parameter : {};
+    // Restaure le fallback vers le champ caché utilisé quand l'hydratation est saisie
+    // manuellement (hors des paliers de 0,5L) plutôt que sélectionnée dans le menu.
+    var hydratation = data['6_Hydratation_Litres'] || data['6_Hydratation_Litres_hidden'] || '';
+    var isoTimestamp = Utilities.formatDate(new Date(), 'Europe/Zurich', "yyyy-MM-dd'T'HH:mm:ss");
 
-    <div class="target-banner">
-        🎯 Cibles Mars 2027 : 82 kg (Muscle Sec) | 🏋️‍♂️ Squat : 130 kg
-    </div>
+    sheet.appendRow([
+      isoTimestamp,
+      data['1_Type_Seance'] || '',
+      NumberSafe(data['2_Duree_Minutes']),
+      NumberSafe(data['3_Intensite_RPE']),
+      NumberSafe(data['4_Squat_Max_KG']), // champ conservé dans la feuille, non exploité visuellement
+      NumberSafe(data['5_Proteines_Grammes']),
+      parseFloatSafe(hydratation),
+      NumberSafe(data['7_Poids_Actuel_KG']),
+      data['8_Etat_Forme'] || '',
+      data['9_Temps_Parcours_Agilite'] || ''
+    ]);
 
-    <!-- Remplace COLLE_TON_URL_ICI par l'URL de ton application web Apps Script -->
-    <form id="suiviForm" autocomplete="on" data-endpoint=https://script.google.com/macros/s/AKfycbzVEfQ08oCjxKukWFj5cK3QXTjnEnHovwwnXfvWAX3c_bYlObWd7W0-iD9KfweIO1UlPw/exec>
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: 'success' }))
+      .setMimeType(ContentService.MimeType.JSON);
 
-        <div class="block">
-            <label>1. Type de Séance principale</label>
-            <div class="grid-buttons" role="radiogroup" aria-label="Type de séance">
-                <input type="radio" name="1_Type_Seance" id="g1" value="Glace (Skills)" class="btn-check" />
-                <label for="g1" class="btn-label" tabindex="0">🏒 Glace (Skills)</label>
+  } catch (err) {
+    try {
+      var errSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Erreurs');
+      if (!errSheet) errSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Erreurs');
+      errSheet.appendRow([new Date(), err.message, JSON.stringify(e && e.parameter ? e.parameter : {})]);
+    } catch (loggingError) {}
 
-                <input type="radio" name="1_Type_Seance" id="g2" value="Glace (Équipe)" class="btn-check" />
-                <label for="g2" class="btn-label" tabindex="0">🏒 Glace (Match)</label>
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
-                <input type="radio" name="1_Type_Seance" id="m1" value="Maniement (WinnWell)" class="btn-check" />
-                <label for="m1" class="btn-label" tabindex="0">🪵 Maniement</label>
+// ============================================================
+// DASHBOARD LIVE — affiché quand on ouvre l'URL du script dans un navigateur
+// Astuce : ajouter ?week=2026-W34 à l'URL pour consulter une semaine archivée
+// ============================================================
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rawWeekParam = e && e.parameter && e.parameter.week ? e.parameter.week : null;
+  // Un paramètre venant de l'URL n'est jamais fiable : on ne l'accepte que s'il
+  // correspond exactement au format attendu (ex: "2026-W36"), sinon on l'ignore
+  // complètement plutôt que de le réinjecter tel quel dans la page.
+  var weekParam = (rawWeekParam && /^\d{4}-W\d{2}$/.test(rawWeekParam)) ? rawWeekParam : null;
+  var sourceSheet = weekParam
+    ? ss.getSheetByName('Archive ' + weekParam)
+    : ss.getSheetByName('Suivi Tadeo1');
 
-                <input type="radio" name="1_Type_Seance" id="mu1" value="Muscu (Bas)" class="btn-check" />
-                <label for="mu1" class="btn-label" tabindex="0">🏋️‍♂️ Muscu (Bas)</label>
+  if (!sourceSheet) {
+    return HtmlService.createHtmlOutput(
+      '<p style="font-family:sans-serif;padding:20px;">Aucune donnée trouvée' +
+      (weekParam ? ' pour la semaine ' + escapeHtml(weekParam) : '') + '.</p>'
+    );
+  }
 
-                <input type="radio" name="1_Type_Seance" id="mu2" value="Muscu (Haut)" class="btn-check" />
-                <label for="mu2" class="btn-label" tabindex="0">🏋️‍♂️ Muscu (Haut)</label>
+  var records = getRecordsFromSheet(sourceSheet);
+  var data = buildDashboardData(records);
+  var html = renderDashboardHtml(data, weekParam, listArchiveWeeks(ss));
+  return HtmlService.createHtmlOutput(html)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
 
-                <input type="radio" name="1_Type_Seance" id="c1" value="Cardio / Sprints" class="btn-check" />
-                <label for="c1" class="btn-label" tabindex="0">🏃‍♂️ Cardio / Sprints</label>
+/** Échappe les caractères HTML spéciaux — utilisé pour toute valeur externe
+ *  (paramètre d'URL) réinjectée dans une page HTML, en défense en profondeur
+ *  même quand la valeur est déjà validée par ailleurs. */
+function escapeHtml(s) {
+  var map = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+  return String(s).replace(/[&<>"']/g, function(c){ return map[c]; });
+}
 
-                <input type="radio" name="1_Type_Seance" id="a1" value="Agilite (Echelle)" class="btn-check" />
-                <label for="a1" class="btn-label" tabindex="0">🪜 Agilité (Échelle)</label>
+// ============================================================
+// LECTURE DES DONNÉES — fonction UNIQUE partagée par le dashboard live
+// et l'export PDF, pour garantir que les deux affichent exactement les mêmes
+// catégories et les mêmes chiffres.
+// ============================================================
+function getRecordsFromSheet(sheet) {
+  var rows = sheet.getDataRange().getValues();
+  if (rows.length > 0) rows.shift(); // enlève l'en-tête
 
-                <input type="radio" name="1_Type_Seance" id="r1" value="Repos / Mobilite" class="btn-check" />
-                <label for="r1" class="btn-label" tabindex="0">💤 Repos / Mobilité</label>
-            </div>
+  return rows
+    .filter(function(r){ return r[0]; })
+    .map(function(r){
+      var ts = r[0] instanceof Date ? r[0] : new Date(r[0]);
+      return {
+        ts: ts,
+        type: (r[1] || '').toString(),
+        duree: NumberSafe(r[2]),
+        rpe: NumberSafe(r[3]),
+        proteines: isEmpty(r[5]) ? null : NumberSafe(r[5]),
+        hydratation: isEmpty(r[6]) ? null : parseFloatSafe(String(r[6])),
+        poids: isEmpty(r[7]) ? null : NumberSafe(r[7]),
+        etat: (r[8] || '').toString()
+      };
+    })
+    .sort(function(a,b){ return a.ts - b.ts; });
+}
 
-            <div id="agilityExtra" class="hidden" style="margin-top:12px;">
-                <label for="agilityTime">Temps au parcours d'agilité</label>
-                <span class="sub-label">Indiquez le temps en secondes (ex: 12.4) ou au format mm:ss</span>
-                <input id="agilityTime" name="9_Temps_Parcours_Agilite" type="text" placeholder="Ex: 12.4 ou 00:12.40" inputmode="numeric" />
-            </div>
-        </div>
+function listArchiveWeeks(ss) {
+  return ss.getSheets()
+    .map(function(s){ return s.getName(); })
+    .filter(function(n){ return n.indexOf('Archive ') === 0; })
+    .map(function(n){ return n.replace('Archive ', ''); })
+    .sort();
+}
 
-        <div class="block">
-            <label for="duree">2. Durée totale de l'effort</label>
-            <span class="sub-label">Objectif hebdo : 450 à 600 min</span>
-            <input type="number" id="duree" name="2_Duree_Minutes" placeholder="En minutes (ex: 45, 60, 90)" required inputmode="numeric" />
-        </div>
+// ============================================================
+// UTILITAIRES
+// ============================================================
+function NumberSafe(v) {
+  var n = Number(v);
+  return (v === '' || v === null || v === undefined || isNaN(n)) ? 0 : n;
+}
+function parseFloatSafe(s) {
+  if (s === null || s === undefined || s === '') return null;
+  var t = String(s).replace(',', '.').trim();
+  var n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+function isEmpty(v) { return v === null || v === undefined || v === ''; }
+/** Fusionne Muscu (Bas) et Muscu (Haut) en une seule catégorie "Muscu" pour
+ *  le graphique et le tableau de volume hebdomadaire uniquement — les autres
+ *  usages du type (maniement, cardio, repos) restent basés sur le libellé brut. */
+function normalizeVolumeType(t) {
+  return /^Muscu/i.test(t) ? 'Muscu' : t;
+}
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function fmtDDMM(d){ return pad2(d.getDate()) + '/' + pad2(d.getMonth()+1); }
+function fmtYMD(d){ return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
 
-        <div class="block">
-            <label for="rpe">3. Intensité de la séance (RPE)</label>
-            <select id="rpe" name="3_Intensite_RPE" required>
-                <option value="1">⚡ 1 - Très Facile (Récupération)</option>
-                <option value="2">⚡ 2 - Modéré (Travail technique)</option>
-                <option value="3" selected>⚡ 3 - Difficile (Standard Match/Muscu)</option>
-                <option value="4">⚡ 4 - Très Difficile (Haute Intensité)</option>
-                <option value="5">⚡ 5 - Épuisement (Maximal)</option>
-            </select>
-        </div>
+var MOIS_ABREV = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 
-        <div class="block">
-            <label for="squat">4. Charge max au Squat (1RM)</label>
-            <span class="sub-label">À remplir lors des tests | Target : 130 kg</span>
-            <input type="number" id="squat" name="4_Squat_Max_KG" placeholder="En kg (Optionnel, laisser vide si pas testé)" inputmode="numeric" />
-        </div>
+function getMonday(d) {
+  var date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var day = date.getDay();
+  var diff = (day === 0 ? -6 : 1 - day);
+  date.setDate(date.getDate() + diff);
+  return date;
+}
 
-        <div class="block">
-            <label for="prot">5. Protéines consommées</label>
-            <span class="sub-label">Target stricte : 160g à 165g / jour</span>
-            <input type="number" id="prot" name="5_Proteines_Grammes" placeholder="En grammes (ex: 160)" required inputmode="numeric" />
-        </div>
+/** Ex: "08–14 sept." ou "29 sept.–05 oct." si la semaine chevauche deux mois */
+function formatWeekRange(monday) {
+  var sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  if (monday.getMonth() === sunday.getMonth()) {
+    return pad2(monday.getDate()) + '–' + pad2(sunday.getDate()) + ' ' + MOIS_ABREV[monday.getMonth()];
+  }
+  return pad2(monday.getDate()) + ' ' + MOIS_ABREV[monday.getMonth()] + '–' +
+         pad2(sunday.getDate()) + ' ' + MOIS_ABREV[sunday.getMonth()];
+}
 
-        <div class="block">
-            <label for="eau">6. Hydratation du jour</label>
-            <span class="sub-label">Target : 3,5 à 4 Litres</span>
+function getISOWeekNumber(date) {
+  var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  var dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
 
-            <div class="hydration-row">
-              <select id="eau" name="6_Hydratation_Litres" aria-label="Hydratation du jour en litres">
-              </select>
+// ============================================================
+// AGRÉGATION DES DONNÉES — tout est désormais calculé semaine calendaire
+// (lundi à dimanche) par semaine, plus aucune fenêtre glissante de 14 jours.
+// ============================================================
+function buildDashboardData(records) {
+  var empty = {
+    weight: [], hydration: [], volume_weekly: {weeks:[], weekLabels:[], types:[], data:{}},
+    total_weekly: [], rpe_weekly: [], etat_counts: {},
+    weight_summary: { last: 0, first: 0 },
+    week_order: [],
+    week_targets: { week: null, weekLabel: '', protein:{avg:null, daysLogged:0}, hydration:{avg:null},
+      volume: 0, maniement: 0, cardio: 0, recovery:{alertes:0, repos:0} }
+  };
+  if (!records || records.length === 0) return empty;
 
-              <input id="eauNumber" type="number" step="0.1" min="0" max="10" value="3.5" aria-label="Saisie hydratation en litres" />
-            </div>
-        </div>
+  // Poids : dernière valeur par jour
+  var weightByDate = {};
+  records.forEach(function(r){ if (r.poids !== null) weightByDate[fmtYMD(r.ts)] = r.poids; });
+  var weight = Object.keys(weightByDate).sort().map(function(d){
+    return { date: fmtDDMM(new Date(d)), poids: weightByDate[d] };
+  });
 
-        <div class="block">
-            <label for="poids">7. Poids corporel actuel</label>
-            <span class="sub-label">À remplir de préférence le lundi matin | Target : 82 kg</span>
-            <input type="number" step="0.1" id="poids" name="7_Poids_Actuel_KG" placeholder="En kg (ex: 77.2)" inputmode="decimal" />
-        </div>
+  // Hydratation par séance
+  var hydration = records.filter(function(r){ return r.hydratation !== null; })
+    .map(function(r){ return { date: fmtDDMM(r.ts), valeur: r.hydratation }; });
 
-        <div class="block">
-            <label>8. État de Forme / Énergie générale</label>
-            <div class="grid-buttons" role="radiogroup" aria-label="État de forme">
-                <input type="radio" name="8_Etat_Forme" id="f1" value="Top Forme" class="btn-check" />
-                <label for="f1" class="btn-label" tabindex="0">🔋 Top Forme (100%)</label>
+  // Semaines calendaires (lundi-dimanche) en ordre chronologique + libellé avec dates
+  var weekOrder = [];
+  var weekSeen = {};
+  var weekMonday = {};
+  records.forEach(function(r){
+    var w = 'S' + getISOWeekNumber(r.ts);
+    if (!weekSeen[w]) {
+      weekSeen[w] = true;
+      weekOrder.push(w);
+      weekMonday[w] = getMonday(r.ts);
+    }
+  });
+  var weekLabels = weekOrder.map(function(w){ return w + ' (' + formatWeekRange(weekMonday[w]) + ')'; });
 
-                <input type="radio" name="8_Etat_Forme" id="f2" value="Energie OK" class="btn-check" />
-                <label for="f2" class="btn-label" tabindex="0">⚡ Énergie OK</label>
+  // Types de séances
+  var types = [];
+  var typeSeen = {};
+  records.forEach(function(r){
+    var t = normalizeVolumeType(r.type);
+    if (t && !typeSeen[t]) { typeSeen[t]=true; types.push(t); }
+  });
 
-                <input type="radio" name="8_Etat_Forme" id="f3" value="Fatigue / Courbatures" class="btn-check" />
-                <label for="f3" class="btn-label" tabindex="0">💤 Courbatures</label>
+  var volumeData = {};
+  types.forEach(function(t){ volumeData[t] = weekOrder.map(function(){ return 0; }); });
+  var totalByWeek = {}; weekOrder.forEach(function(w){ totalByWeek[w]=0; });
+  var rpeSumByWeek = {}; var rpeCountByWeek = {};
+  weekOrder.forEach(function(w){ rpeSumByWeek[w]=0; rpeCountByWeek[w]=0; });
 
-                <input type="radio" name="8_Etat_Forme" id="f4" value="Douleur" class="btn-check" />
-                <label for="f4" class="btn-label" tabindex="0">⚠️ Douleur (Alerte)</label>
-            </div>
-        </div>
+  records.forEach(function(r){
+    var w = 'S' + getISOWeekNumber(r.ts);
+    var idx = weekOrder.indexOf(w);
+    var tVol = normalizeVolumeType(r.type);
+    if (tVol) volumeData[tVol][idx] += r.duree;
+    totalByWeek[w] += r.duree;
+    if (r.rpe) { rpeSumByWeek[w] += r.rpe; rpeCountByWeek[w] += 1; }
+  });
 
-        <button type="submit" class="submit-btn" id="submitBtn">TRANSMETTRE LES DONNÉES 🚀</button>
-        <div id="statusMsg" class="status-msg"></div>
-    </form>
+  var totalWeekly = weekOrder.map(function(w){ return totalByWeek[w]; });
+  var rpeWeekly = weekOrder.map(function(w){
+    return rpeCountByWeek[w] ? Math.round((rpeSumByWeek[w]/rpeCountByWeek[w])*100)/100 : 0;
+  });
 
-    <script>
-      document.querySelectorAll('.btn-label').forEach(function(lbl){
-        lbl.addEventListener('keydown', function(e){
-          if(e.key === 'Enter' || e.key === ' '){
-            e.preventDefault();
-            var id = this.getAttribute('for');
-            var input = document.getElementById(id);
-            if(input) input.checked = true;
-            input && input.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        });
-        lbl.addEventListener('click', function(){
-          var id = this.getAttribute('for');
-          var input = document.getElementById(id);
-          if(input) input.checked = true;
-          input && input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-      });
+  var etatCounts = {};
+  records.forEach(function(r){ if (r.etat) etatCounts[r.etat] = (etatCounts[r.etat]||0) + 1; });
 
-      (function initHydrationControl(){
-        const select = document.getElementById('eau');
-        const number = document.getElementById('eauNumber');
-        const min = 0.0;
-        const max = 5.0;
-        const step = 0.5;
+  var lastWeight = weight.length ? weight[weight.length-1].poids : 0;
+  var firstWeight = weight.length ? weight[0].poids : 0;
 
-        const zoneCible = {
-          '3.5': '💧 3,5 L (Zone cible)',
-          '4.0': '💧 4,0 L (Zone cible 🔥)'
-        };
+  // ------- Objectifs de la semaine EN COURS uniquement (plus de fenêtre 14 jours) -------
+  var lastWeek = weekOrder[weekOrder.length-1];
+  var weekRecords = records.filter(function(r){ return 'S'+getISOWeekNumber(r.ts) === lastWeek; });
 
-        for (let v = min; v <= max + 1e-9; v = Math.round((v + step) * 100) / 100) {
-          const valStr = v.toFixed(1);
-          const opt = document.createElement('option');
-          opt.value = valStr;
-          if (zoneCible[valStr]) {
-            opt.textContent = zoneCible[valStr];
-          } else {
-            opt.textContent = '💧 ' + valStr.replace('.', ',') + ' L';
-          }
-          select.appendChild(opt);
-        }
+  // Tadeo peut renseigner les protéines à plusieurs reprises le même jour
+  // (une saisie par apport, avant/après chaque séance) : ces valeurs sont
+  // cumulatives et doivent être ADDITIONNÉES pour obtenir le total du jour,
+  // avant de moyenner sur les jours renseignés de la semaine.
+  var proteinByDate = {};
+  weekRecords.forEach(function(r){
+    if (r.proteines !== null) proteinByDate[fmtYMD(r.ts)] = (proteinByDate[fmtYMD(r.ts)] || 0) + r.proteines;
+  });
+  var proteinDailyVals = Object.keys(proteinByDate).map(function(d){ return proteinByDate[d]; });
+  var avgProtein = proteinDailyVals.length ? Math.round(proteinDailyVals.reduce(function(a,b){return a+b;},0)/proteinDailyVals.length) : null;
+  var proteinDaysLogged = proteinDailyVals.length;
 
-        select.value = '3.5';
-        number.value = '3.5';
+  var hydraWeekVals = weekRecords.filter(function(r){ return r.hydratation !== null; }).map(function(r){ return r.hydratation; });
+  var avgHydraWeek = hydraWeekVals.length ? Math.round((hydraWeekVals.reduce(function(a,b){return a+b;},0)/hydraWeekVals.length)*100)/100 : null;
 
-        select.addEventListener('change', () => {
-          if (select.value !== '') number.value = parseFloat(select.value).toFixed(1);
-        });
+  var volumeWeek = totalByWeek[lastWeek] || 0;
 
-        number.addEventListener('input', () => {
-          let val = parseFloat(number.value);
-          if (isNaN(val) || val < 0) val = 0;
-          val = Math.round(val * 10) / 10;
-          number.value = val.toFixed(1);
+  var maniementWeek = weekRecords.filter(function(r){ return /maniement/i.test(r.type); })
+    .reduce(function(s,r){ return s + r.duree; }, 0);
+  var cardioWeek = weekRecords.filter(function(r){ return /cardio|footing/i.test(r.type); })
+    .reduce(function(s,r){ return s + r.duree; }, 0);
 
-          const match = Array.from(select.options).some(opt => opt.value === val.toFixed(1));
-          if (match) {
-            select.value = val.toFixed(1);
-          } else {
-            select.value = '';
-          }
-        });
-      })();
+  var etatWeek = {};
+  weekRecords.forEach(function(r){ if (r.etat) etatWeek[r.etat] = (etatWeek[r.etat]||0) + 1; });
+  var alertes = (etatWeek['Douleur']||0) + (etatWeek['Fatigue / Courbatures']||0);
+  var reposCount = weekRecords.filter(function(r){ return r.type === 'Repos / Mobilite'; }).length;
 
-      (function initAgilityExtra(){
-        const agilityRadio = document.getElementById('a1');
-        const allRadios = document.querySelectorAll('input[name="1_Type_Seance"]');
-        const extra = document.getElementById('agilityExtra');
-        const agilityInput = document.getElementById('agilityTime');
+  var weekTargets = {
+    week: lastWeek,
+    weekLabel: formatWeekRange(weekMonday[lastWeek]),
+    protein: { avg: avgProtein, daysLogged: proteinDaysLogged },
+    hydration: { avg: avgHydraWeek },
+    volume: volumeWeek,
+    maniement: maniementWeek,
+    cardio: cardioWeek,
+    recovery: { alertes: alertes, repos: reposCount }
+  };
 
-        function updateVisibility() {
-          if (agilityRadio.checked) {
-            extra.classList.remove('hidden');
-            agilityInput.setAttribute('required', 'required');
-          } else {
-            extra.classList.add('hidden');
-            agilityInput.removeAttribute('required');
-            agilityInput.value = '';
-          }
-        }
+  return {
+    weight: weight,
+    hydration: hydration,
+    volume_weekly: { weeks: weekOrder, weekLabels: weekLabels, types: types, data: volumeData },
+    total_weekly: totalWeekly,
+    rpe_weekly: rpeWeekly,
+    etat_counts: etatCounts,
+    weight_summary: { last: lastWeight, first: firstWeight },
+    week_order: weekOrder,
+    week_targets: weekTargets
+  };
+}
 
-        updateVisibility();
-        allRadios.forEach(r => r.addEventListener('change', updateVisibility));
-      })();
+// ============================================================
+// DASHBOARD LIVE (HTML + Chart.js interactif)
+// ============================================================
+function renderDashboardHtml(data, weekParam, archiveWeeks) {
+  var dataJson = JSON.stringify(data).replace(/<\/script/gi, '<\\/script');
+  var archiveOptions = archiveWeeks.map(function(w){
+    var sel = (w === weekParam) ? ' selected' : '';
+    return '<option value="' + w + '"' + sel + '>Semaine ' + w + '</option>';
+  }).join('');
+  var liveSel = weekParam ? '' : ' selected';
 
-      // Envoi vers Google Sheets via Apps Script (remplace l'envoi Formspree)
-      document.getElementById('suiviForm').addEventListener('submit', function(e){
-        e.preventDefault();
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8" />' +
+  '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>' +
+  '<title>Suivi Élite Tadéo — Dashboard</title>' +
+  '<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></' + 'script>' +
+  '<style>' + DASHBOARD_CSS + '</style></head><body>' +
 
-        const form = e.target;
-        const endpoint = form.getAttribute('data-endpoint');
-        const statusMsg = document.getElementById('statusMsg');
-        const submitBtn = document.getElementById('submitBtn');
+  '<div class="header"><h1>🇸🇪 OBJECTIF J20 ÉLITE — DASHBOARD</h1><p>ÉVOLUTION SPORTIVE &amp; NUTRITIONNELLE</p></div>' +
 
-        const agilityRadio = document.getElementById('a1');
-        const agilityInput = document.getElementById('agilityTime');
-        if (agilityRadio.checked && (agilityInput.value || '').trim() === '') {
-          alert('Vous avez choisi Agilité — veuillez indiquer le "Temps au parcours d\'agilité".');
-          agilityInput.focus();
-          return;
-        }
+  '<select class="week-select" onchange="if(this.value===\'live\'){window.location=window.location.pathname;}else{window.location=window.location.pathname+\'?week=\'+this.value;}">' +
+  '<option value="live"' + liveSel + '>🔴 Données en direct</option>' + archiveOptions +
+  '</select>' +
 
-        const select = document.getElementById('eau');
-        const number = document.getElementById('eauNumber');
-        const selected = select.value;
-        const manual = number.value;
-        const manualNum = parseFloat(manual);
+  '<div class="card">' +
+  '<h2>🎯 Objectifs de la semaine' + (data.week_targets.week ? ' — ' + data.week_targets.week + ' (' + data.week_targets.weekLabel + ')' : '') + '</h2>' +
+  '<div class="sub">Nutrition, hydratation, récupération et cibles sportives</div>' +
+  '<div id="targetsContainer"></div>' +
+  '</div>' +
 
-        if ((selected === '' || selected === null) && (manual === '' || isNaN(manualNum))) {
-          alert('Veuillez indiquer votre hydratation en litres (sélection ou saisie).');
-          return;
-        }
+  '<div class="kpi-row">' +
+  '<div class="kpi"><div class="val">' + data.weight_summary.last + '</div><div class="lbl">Poids actuel (kg)</div></div>' +
+  '<div class="kpi"><div class="val">' + (data.week_targets.hydration.avg !== null ? data.week_targets.hydration.avg : '–') + '</div><div class="lbl">Hydratation moy. (L)</div></div>' +
+  '<div class="kpi"><div class="val">' + Math.round(data.total_weekly.reduce(function(a,b){return a+b;},0)/(data.total_weekly.length||1)) + '</div><div class="lbl">Volume/sem. moy. (min)</div></div>' +
+  '</div>' +
 
-        const formData = new FormData(form);
-        // Assure l'envoi de la valeur d'hydratation, saisie manuelle ou sélectionnée
-        if ((selected === '' || selected === null) && !isNaN(manualNum)) {
-          formData.set('6_Hydratation_Litres_hidden', manualNum.toFixed(1));
-        }
+  '<div class="card"><h2>Vue d\'ensemble — semaine en cours</h2><div class="sub">Chaque axe est ramené à 100% de l\'objectif cible</div><div class="chart-wrap"><canvas id="radarChart"></canvas></div></div>' +
+  '<div class="card"><h2>Poids corporel</h2><div class="sub">Cible : 82 kg (muscle sec) — Mars 2027</div><div class="chart-wrap"><canvas id="weightChart"></canvas></div></div>' +
+  '<div class="card"><h2>Volume d\'entraînement hebdomadaire</h2><div class="sub">Cible hebdo : 450 à 600 min · semaines lundi–dimanche</div><div class="chart-wrap tall"><canvas id="volumeChart"></canvas></div></div>' +
+  '<div class="card"><h2>Hydratation par séance</h2><div class="sub">🟢 ≥ 3,5 L (OK) · 🟠 2,5-3,49 L (faible) · 🔴 &lt; 2,5 L (insuffisant)</div><div class="chart-wrap tall"><canvas id="hydraChart"></canvas></div></div>' +
+  '<div class="card"><h2>Intensité moyenne (RPE) par semaine</h2><div class="sub">Échelle de 1 à 5 · semaines lundi–dimanche</div><div class="chart-wrap"><canvas id="rpeChart"></canvas></div></div>' +
+  '<div class="card"><h2>État de forme général</h2><div class="sub">Répartition sur la période affichée</div><div class="chart-wrap"><canvas id="etatChart"></canvas></div></div>' +
 
-        if (!endpoint || endpoint.indexOf('COLLE_TON_URL_ICI') !== -1) {
-          statusMsg.textContent = "⚠️ URL Google Sheets non configurée dans le formulaire.";
-          statusMsg.className = 'status-msg err';
-          return;
-        }
+  '<div class="updated">Généré le ' + new Date().toLocaleString('fr-CH') + '</div>' +
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'ENVOI EN COURS...';
-        statusMsg.textContent = '';
-        statusMsg.className = 'status-msg';
+  '<script>' + buildDashboardScript(dataJson) + '</' + 'script></body></html>';
+}
 
-        fetch(endpoint, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: formData
-        })
-        .then(function(){
-          // mode no-cors: on ne peut pas lire la réponse, on considère l'envoi réussi
-          statusMsg.textContent = '✅ Données envoyées avec succès !';
-          statusMsg.className = 'status-msg ok';
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'TRANSMETTRE LES DONNÉES 🚀';
-          form.reset();
-          document.getElementById('eau').value = '3.5';
-          document.getElementById('eauNumber').value = '3.5';
-          document.getElementById('agilityExtra').classList.add('hidden');
-        })
-        .catch(function(err){
-          statusMsg.textContent = '❌ Erreur lors de l\'envoi. Réessayez.';
-          statusMsg.className = 'status-msg err';
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'TRANSMETTRE LES DONNÉES 🚀';
-        });
-      });
-    </script>
+var DASHBOARD_CSS =
+  ':root{--bg:#000;--card:#121212;--card-border:#222;--accent:#00ffb3;--text:#fff;--text-dim:#8a8a8a;--warn:#ff6b6b;--mid:#ffd166;}' +
+  '*{box-sizing:border-box;}' +
+  'body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px;}' +
+  '.header{text-align:center;padding:18px 0;border-bottom:1px solid var(--card-border);margin-bottom:16px;}' +
+  '.header h1{margin:0;color:var(--accent);font-size:20px;}' +
+  '.header p{margin:6px 0 0 0;color:var(--text-dim);font-size:12px;letter-spacing:1px;}' +
+  '.week-select{width:100%;padding:12px;border-radius:8px;border:1px solid #333;background:#1c1c1e;color:#fff;font-size:14px;margin-bottom:16px;}' +
+  '.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}' +
+  '.kpi{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:14px;text-align:center;}' +
+  '.kpi .val{font-size:20px;font-weight:700;color:var(--accent);}' +
+  '.kpi .lbl{font-size:10px;color:var(--text-dim);margin-top:4px;}' +
+  '.card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:16px;margin-bottom:16px;}' +
+  '.card h2{margin:0 0 4px 0;font-size:15px;}' +
+  '.card .sub{font-size:11px;color:var(--text-dim);margin-bottom:12px;}' +
+  '.chart-wrap{position:relative;height:260px;}' +
+  '.chart-wrap.tall{height:300px;}' +
+  '.updated{text-align:center;font-size:11px;color:var(--text-dim);margin-top:4px;}' +
+  '.gauge{margin-bottom:16px;}' +
+  '.gauge:last-child{margin-bottom:0;}' +
+  '.gauge-label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:6px;gap:8px;}' +
+  '.gauge-label .name{color:#fff;font-weight:600;white-space:nowrap;}' +
+  '.gauge-label .value{color:var(--text-dim);font-size:11px;text-align:right;}' +
+  '.gauge-bar-bg{background:#1c1c1e;border-radius:8px;height:10px;overflow:hidden;}' +
+  '.gauge-bar-fill{height:100%;border-radius:8px;}' +
+  '.gauge-status{font-size:11px;margin-top:5px;}' +
+  '.gauge-status.ok{color:var(--accent);}' +
+  '.gauge-status.warn{color:var(--mid);}' +
+  '.gauge-status.bad{color:var(--warn);}' +
+  '.gauge-status.na{color:var(--text-dim);}';
 
-</body>
-</html>
+function buildDashboardScript(dataJson) {
+  return 'const DATA = ' + dataJson + ';' +
+  'Chart.defaults.color = "#8a8a8a";' +
+  'const ACCENT="#00ffb3", WARN="#ff6b6b", MID="#ffd166", GRID="rgba(255,255,255,0.06)";' +
+  'const PALETTE=["#00ffb3","#5cc8ff","#ffd166","#ff6b6b","#c792ea","#ff9f68"];' +
+
+  'function colorFor(s){return s==="ok"?ACCENT:s==="warn"?MID:s==="bad"?WARN:"#555";}' +
+  'function gauge(container,name,valueLabel,percent,status,statusText){' +
+    'var div=document.createElement("div");div.className="gauge";' +
+    'div.innerHTML="<div class=\\"gauge-label\\"><span class=\\"name\\">"+name+"</span><span class=\\"value\\">"+valueLabel+"</span></div>"+' +
+    '"<div class=\\"gauge-bar-bg\\"><div class=\\"gauge-bar-fill\\" style=\\"width:"+Math.max(4,percent)+"%;background:"+colorFor(status)+"\\"></div></div>"+' +
+    '"<div class=\\"gauge-status "+status+"\\">"+statusText+"</div>";' +
+    'container.appendChild(div);' +
+  '}' +
+  'const wt = DATA.week_targets;' +
+  'const targetsEl = document.getElementById("targetsContainer");' +
+
+  'if (wt.protein.avg === null) {' +
+    'gauge(targetsEl,"🍗 Protéines","Non renseigné",0,"na","Cible : 160 à 165 g/jour — aucune donnée cette semaine");' +
+  '} else {' +
+    'var pPct = Math.min(100, Math.round(wt.protein.avg/165*100));' +
+    'var pStatus = wt.protein.avg>=160 ? "ok" : (wt.protein.avg>=120?"warn":"bad");' +
+    'gauge(targetsEl,"🍗 Protéines",wt.protein.avg+" g/j (moy. sur "+wt.protein.daysLogged+" j renseignés)",pPct,pStatus,pStatus==="ok"?"Objectif atteint":"Cible : 160-165 g/jour");' +
+  '}' +
+  'if (wt.hydration.avg === null) {' +
+    'gauge(targetsEl,"💧 Hydratation","Non renseigné",0,"na","Cible : 3,5 à 4 L/séance");' +
+  '} else {' +
+    'var hPct = Math.min(100, Math.round(wt.hydration.avg/4*100));' +
+    'var hStatus = (wt.hydration.avg>=3.5) ? "ok" : (wt.hydration.avg>=2.5?"warn":"bad");' +
+    'gauge(targetsEl,"💧 Hydratation",wt.hydration.avg+" L/séance (moy.)",hPct,hStatus,hStatus==="ok"?"Zone cible atteinte":"Cible : 3,5-4 L");' +
+  '}' +
+  'var vPct = Math.min(100, Math.round(wt.volume/600*100));' +
+  'var vStatus = (wt.volume>=450) ? "ok" : (wt.volume>=300?"warn":"bad");' +
+  'gauge(targetsEl,"🏒 Volume d\\u2019entraînement",wt.volume+" min cette semaine",vPct,vStatus,vStatus==="ok"?"Dans la cible":"Cible : 450-600 min/sem.");' +
+
+  'var mPct = Math.min(100, Math.round(wt.maniement/120*100));' +
+  'var mStatus = (wt.maniement>=120) ? "ok" : (wt.maniement>=60?"warn":"bad");' +
+  'gauge(targetsEl,"🪵 Maniement",wt.maniement+" min cette semaine",mPct,mStatus,mStatus==="ok"?"Dans la cible":"Cible : 120 min/sem.");' +
+
+  'var cPct = Math.min(100, Math.round(wt.cardio/150*100));' +
+  'var cStatus = (wt.cardio>=150) ? "ok" : (wt.cardio>=75?"warn":"bad");' +
+  'gauge(targetsEl,"🏃 Cardio/Footing",wt.cardio+" min cette semaine",cPct,cStatus,cStatus==="ok"?"Dans la cible":"Cible : 150 min/sem.");' +
+
+  'var wDelta = Math.abs(82 - DATA.weight_summary.last);' +
+  'var wPct = Math.max(4, 100 - Math.round(wDelta/8*100));' +
+  'var wStatus = wDelta<=1 ? "ok" : (wDelta<=3?"warn":"bad");' +
+  'gauge(targetsEl,"⚖️ Poids",DATA.weight_summary.last+" / 82 kg",wPct,wStatus,wDelta<=1?"Objectif atteint":"Écart : "+wDelta.toFixed(1)+" kg");' +
+
+  'var alertesCount = wt.recovery.alertes;' +
+  'var recStatus = alertesCount===0 ? "ok" : (alertesCount<=2?"warn":"bad");' +
+  'var recPct = Math.max(4, 100 - alertesCount*25);' +
+  'gauge(targetsEl,"😴 Récupération",alertesCount+" alerte(s) douleur/fatigue · "+wt.recovery.repos+" séance(s) repos",recPct,recStatus,recStatus==="ok"?"Bonne récupération":"À surveiller");' +
+
+  'const rt={' +
+    'hydratation: wt.hydration.avg!==null ? Math.min(100,Math.round(wt.hydration.avg/4*100)) : 0,' +
+    'intensite: Math.min(100,Math.round((DATA.rpe_weekly[DATA.rpe_weekly.length-1]||0)/5*100)),' +
+    'volume: Math.min(100,Math.round(wt.volume/600*100)),' +
+    'maniement: Math.min(100,Math.round(wt.maniement/120*100)),' +
+    'cardio: Math.min(100,Math.round(wt.cardio/150*100)),' +
+    'proteines: wt.protein.avg!==null ? Math.min(100,Math.round(wt.protein.avg/165*100)) : 0' +
+  '};' +
+  'new Chart(document.getElementById("radarChart"),{type:"radar",data:{labels:["Hydratation","Intensité (RPE)","Volume hebdo","Maniement","Cardio/Footing","Protéines"],datasets:[{label:"Actuel",data:[rt.hydratation,rt.intensite,rt.volume,rt.maniement,rt.cardio,rt.proteines],backgroundColor:"rgba(0,255,179,0.18)",borderColor:ACCENT,pointBackgroundColor:ACCENT,borderWidth:2},{label:"Cible",data:[100,100,100,100,100,100],backgroundColor:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.25)",borderDash:[4,4],pointRadius:0,borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{angleLines:{color:GRID},grid:{color:GRID},pointLabels:{color:"#fff",font:{size:11}},ticks:{display:false},suggestedMin:0,suggestedMax:120}},plugins:{legend:{labels:{color:"#fff",boxWidth:12}}}}});' +
+
+  'new Chart(document.getElementById("weightChart"),{type:"line",data:{labels:DATA.weight.map(w=>w.date),datasets:[{label:"Poids (kg)",data:DATA.weight.map(w=>w.poids),borderColor:ACCENT,backgroundColor:"rgba(0,255,179,0.12)",fill:true,tension:0.25,pointRadius:3,pointBackgroundColor:ACCENT}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:GRID}},y:{grid:{color:GRID},suggestedMin:74,suggestedMax:84}},plugins:{legend:{display:false}}}});' +
+
+  'const volDatasets=DATA.volume_weekly.types.map((t,i)=>({label:t,data:DATA.volume_weekly.data[t],backgroundColor:PALETTE[i%PALETTE.length],stack:"vol"}));' +
+  'new Chart(document.getElementById("volumeChart"),{type:"bar",data:{labels:DATA.volume_weekly.weekLabels,datasets:volDatasets},options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,grid:{color:GRID},title:{display:true,text:"minutes",color:"#8a8a8a"}}},plugins:{legend:{position:"bottom",labels:{color:"#fff",boxWidth:10,font:{size:10}}}}}});' +
+
+  'const hydraColors=DATA.hydration.map(h=> h.valeur>=3.5 ? ACCENT : (h.valeur>=2.5 ? MID : WARN));' +
+  'new Chart(document.getElementById("hydraChart"),{type:"bar",data:{labels:DATA.hydration.map(h=>h.date),datasets:[{label:"Litres",data:DATA.hydration.map(h=>h.valeur),backgroundColor:hydraColors}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false},ticks:{maxRotation:90,minRotation:90,font:{size:9}}},y:{grid:{color:GRID},suggestedMax:5,title:{display:true,text:"litres",color:"#8a8a8a"}}},plugins:{legend:{display:false}}}});' +
+
+  'new Chart(document.getElementById("rpeChart"),{type:"bar",data:{labels:DATA.volume_weekly.weekLabels,datasets:[{label:"RPE moyen",data:DATA.rpe_weekly,backgroundColor:DATA.rpe_weekly.map(v=>v>=4?WARN:(v>=3?MID:ACCENT)),borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:GRID},suggestedMin:0,suggestedMax:5}},plugins:{legend:{display:false}}}});' +
+
+  'const etatLabels=Object.keys(DATA.etat_counts);const etatColors={"Top Forme":ACCENT,"Energie OK":"#5cc8ff","Fatigue / Courbatures":MID,"Douleur":WARN};' +
+  'new Chart(document.getElementById("etatChart"),{type:"doughnut",data:{labels:etatLabels,datasets:[{data:etatLabels.map(l=>DATA.etat_counts[l]),backgroundColor:etatLabels.map(l=>etatColors[l]||"#888"),borderColor:"#121212",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#fff",boxWidth:10,font:{size:11}}}}}});';
+}
+
+// ============================================================
+// EXPORT PDF — version STATIQUE (jauges CSS + tableaux, sans Chart.js)
+// Google ne pouvant pas exécuter de JavaScript lors de la conversion HTML→PDF,
+// les graphiques Chart.js ne s'afficheraient jamais dans le PDF : on les
+// remplace donc ici par des barres CSS et des tableaux, qui eux s'affichent
+// correctement.
+// ============================================================
+function exportDashboardPDF() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var now = new Date();
+  var lastWeekNumber = getISOWeekNumber(new Date(now.getTime() - 7*24*3600*1000));
+  var year = now.getFullYear();
+  var weekCode = 'S' + (lastWeekNumber < 10 ? '0' + lastWeekNumber : lastWeekNumber);
+  var archiveName = 'Archive ' + year + '-W' + (lastWeekNumber < 10 ? '0' + lastWeekNumber : lastWeekNumber);
+  var archiveSheet = ss.getSheetByName(archiveName);
+  if (!archiveSheet) {
+    logToErrorSheet(ss, 'exportDashboardPDF : archive "' + archiveName +
+      '" introuvable — le PDF de la semaine ' + weekCode + ' ' + year +
+      ' n\'a pas pu être généré (archiveWeekly n\'a probablement pas tourné correctement ce lundi-là).');
+    return;
+  }
+
+  try {
+    var records = getRecordsFromSheet(archiveSheet);
+    var data = buildDashboardData(records);
+    var html = renderStaticSummaryHtml(data, weekCode, year);
+
+    var blob = Utilities.newBlob(html, 'text/html', 'dashboard.html');
+    var pdf = Utilities.convertToPdf(blob);
+
+    var folderName = 'Dashboard_Exports';
+    var folders = DriveApp.getFoldersByName(folderName);
+    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+    var fileName = 'Tadeo_' + weekCode + '_' + year + '.pdf';
+    // Supprime un éventuel export précédent pour cette même semaine avant d'en
+    // créer un nouveau, pour éviter d'accumuler des doublons en cas de
+    // réexécution (manuelle ou après une erreur).
+    var existing = folder.getFilesByName(fileName);
+    while (existing.hasNext()) { existing.next().setTrashed(true); }
+
+    folder.createFile(pdf).setName(fileName);
+  } catch (err) {
+    logToErrorSheet(ss, 'exportDashboardPDF : échec lors de la génération du PDF pour ' +
+      weekCode + ' ' + year + ' — ' + err.message);
+  }
+}
+
+/** Ajoute une ligne dans l'onglet "Erreurs" (le crée si besoin), pour garder
+ *  une trace consultable des échecs silencieux des fonctions déclenchées
+ *  automatiquement (archivage, export PDF). */
+function logToErrorSheet(ss, message) {
+  try {
+    var errSheet = ss.getSheetByName('Erreurs');
+    if (!errSheet) errSheet = ss.insertSheet('Erreurs');
+    errSheet.appendRow([new Date(), message]);
+  } catch (loggingError) {
+    // Si même la journalisation échoue, on ne peut rien faire de plus.
+  }
+}
+
+function pctBarHtml(label, valueLabel, percent, color) {
+  return '<div style="margin-bottom:14px;">' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">' +
+    '<strong>' + label + '</strong><span style="color:#666;">' + valueLabel + '</span></div>' +
+    '<div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;">' +
+    '<div style="width:' + Math.max(4,percent) + '%;height:100%;background:' + color + ';"></div></div></div>';
+}
+
+function renderStaticSummaryHtml(data, weekCode, year) {
+  var wt = data.week_targets;
+  var green = '#00b37e', orange = '#e6a800', red = '#e64545', grey = '#999';
+
+  var proteinBar = wt.protein.avg === null
+    ? pctBarHtml('Protéines', 'Non renseigné (cible 160-165 g/j)', 4, grey)
+    : pctBarHtml('Protéines', wt.protein.avg + ' g/j (' + wt.protein.daysLogged + ' j renseignés)',
+        Math.min(100, Math.round(wt.protein.avg/165*100)), wt.protein.avg>=160?green:(wt.protein.avg>=120?orange:red));
+
+  var hydraBar = wt.hydration.avg === null
+    ? pctBarHtml('Hydratation', 'Non renseigné (cible 3,5-4 L)', 4, grey)
+    : pctBarHtml('Hydratation', wt.hydration.avg + ' L/séance',
+        Math.min(100, Math.round(wt.hydration.avg/4*100)), wt.hydration.avg>=3.5?green:(wt.hydration.avg>=2.5?orange:red));
+
+  var volBar = pctBarHtml('Volume d\'entraînement', wt.volume + ' min (cible 450-600)',
+    Math.min(100, Math.round(wt.volume/600*100)), wt.volume>=450?green:(wt.volume>=300?orange:red));
+
+  var maniementBar = pctBarHtml('Maniement', wt.maniement + ' min (cible 120)',
+    Math.min(100, Math.round(wt.maniement/120*100)), wt.maniement>=120?green:(wt.maniement>=60?orange:red));
+
+  var cardioBar = pctBarHtml('Cardio/Footing', wt.cardio + ' min (cible 150)',
+    Math.min(100, Math.round(wt.cardio/150*100)), wt.cardio>=150?green:(wt.cardio>=75?orange:red));
+
+  var wDelta = Math.abs(82 - data.weight_summary.last);
+  var weightBar = pctBarHtml('Poids', data.weight_summary.last + ' / 82 kg',
+    Math.max(4, 100 - Math.round(wDelta/8*100)), wDelta<=1?green:(wDelta<=3?orange:red));
+
+  var recBar = pctBarHtml('Récupération', wt.recovery.alertes + ' alerte(s) · ' + wt.recovery.repos + ' séance(s) repos',
+    Math.max(4, 100 - wt.recovery.alertes*25), wt.recovery.alertes===0?green:(wt.recovery.alertes<=2?orange:red));
+
+  var volumeRows = data.volume_weekly.types.map(function(t){
+    var idx = data.volume_weekly.weeks.indexOf(wt.week);
+    var mins = idx >= 0 ? data.volume_weekly.data[t][idx] : 0;
+    return '<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;">' + t + '</td>' +
+      '<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">' + mins + ' min</td></tr>';
+  }).join('');
+
+  var etatRows = Object.keys(data.etat_counts).map(function(k){
+    return '<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;">' + k + '</td>' +
+      '<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">' + data.etat_counts[k] + '</td></tr>';
+  }).join('');
+
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/><style>' +
+    'body{font-family:Arial,sans-serif;color:#111;padding:24px;}' +
+    'h1{color:#00875a;font-size:20px;margin-bottom:0;}' +
+    'p.sub{color:#666;font-size:12px;margin-top:4px;}' +
+    'h2{font-size:14px;margin-top:24px;border-bottom:2px solid #eee;padding-bottom:4px;}' +
+    'table{width:100%;border-collapse:collapse;font-size:12px;}' +
+    '</style></head><body>' +
+    '<h1>🇸🇪 Objectif J20 Élite — Bilan ' + weekCode + ' ' + year + '</h1>' +
+    '<p class="sub">' + (wt.weekLabel || '') + ' — récapitulatif nutrition, hydratation, récupération et cibles sportives</p>' +
+    '<h2>Objectifs de la semaine</h2>' +
+    proteinBar + hydraBar + volBar + maniementBar + cardioBar + weightBar + recBar +
+    '<h2>Volume par type de séance</h2>' +
+    '<table>' + volumeRows + '</table>' +
+    '<h2>État de forme</h2>' +
+    '<table>' + etatRows + '</table>' +
+    '</body></html>';
+}
+
+// ============================================================
+// ARCHIVAGE HEBDOMADAIRE AUTOMATIQUE
+// ============================================================
+function archiveWeekly() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var source = ss.getSheetByName('Suivi Tadeo1');
+  if (!source) {
+    logToErrorSheet(ss, 'archiveWeekly : onglet "Suivi Tadeo1" introuvable — impossible d\'archiver.');
+    return;
+  }
+
+  var now = new Date();
+  var year = now.getFullYear();
+  var week = getISOWeekNumber(now);
+  var archiveName = 'Archive ' + year + '-W' + (week < 10 ? '0' + week : week);
+  if (ss.getSheetByName(archiveName)) return; // déjà archivée, rien à faire
+
+  try {
+    var copy = source.copyTo(ss);
+    copy.setName(archiveName);
+    copy.hideSheet();
+  } catch (err) {
+    logToErrorSheet(ss, 'archiveWeekly : échec de la création de "' + archiveName + '" — ' + err.message);
+  }
+}
+
+/**
+ * À exécuter UNE SEULE FOIS manuellement (sélectionner cette fonction dans
+ * l'éditeur puis cliquer ▶ Exécuter). Programme l'archivage ET l'export PDF
+ * chaque lundi à 3h du matin.
+ */
+function installerDeclencheurHebdomadaire() {
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(t){
+    var fn = t.getHandlerFunction();
+    if (fn === 'archiveWeekly' || fn === 'exportDashboardPDF') ScriptApp.deleteTrigger(t);
+  });
+
+  ScriptApp.newTrigger('archiveWeekly')
+    .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(3).create();
+
+  ScriptApp.newTrigger('exportDashboardPDF')
+    .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(4).create(); // 1h après l'archivage
+}
